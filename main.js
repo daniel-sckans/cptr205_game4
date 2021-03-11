@@ -1,11 +1,19 @@
+// SAMPLING OF THINGS WE CAN CHANGE
+// * ENEMY
+// * COLLECTIBLES 
+// * GOAL CONDITION
+// * LOSS CONDITION
+// * NEW GAME SCREEN
+
 window.addEventListener('DOMContentLoaded', DOMContentLoaded => {
     
     // CANVAS INIT
     const render = document.querySelector('canvas').getContext('2d'); 
-    let w, h; 
+    let w, h, unit; 
     const resize = () => {
         w = render.canvas.width = render.canvas.clientWidth * window.devicePixelRatio; 
         h = render.canvas.height = render.canvas.clientHeight * window.devicePixelRatio; 
+        unit = h / 2; 
     }; 
     resize(); 
     window.addEventListener('resize', resize); 
@@ -49,9 +57,25 @@ window.addEventListener('DOMContentLoaded', DOMContentLoaded => {
     const platforms = []; 
     platforms.push(new Platform(-0.25, -0.25, 3, 0.25)); 
     platforms.push(new Platform(0.125, 0.25, 4, 0.125)); 
+
+    // COINS
+    class Coin {
+        constructor(x, y, w, h) {
+            this.x = x; 
+            this.y = y; 
+            this.w = w; 
+            this.h = h; 
+        }
+    }
+    const coins = []; 
+    coins.push(new Coin(0.25, 0.5, 0.1, 0.1)); 
+    coins.push(new Coin(0.5, 0.5, 0.1, 0.1)); 
+    let points = 0; 
     
     // ANIMATION LOOP
     const animation = timestamp => {
+
+        // PHYSICS ENGINE
         const PLAYER_ACCELERATION_X = 0.001; 
         if(arrow_right) {
             player_ax += PLAYER_ACCELERATION_X; 
@@ -65,7 +89,6 @@ window.addEventListener('DOMContentLoaded', DOMContentLoaded => {
         player_vx *= 0.98; 
         player_vy += player_ay; 
         player_ay -= 0.00098; 
-        
         let player_grounded = false; 
         platforms.forEach(platform => {
             if(platform.x <= player_x && player_x <= platform.x + platform.w && platform.y <= player_y && player_y + player_vy <= platform.y) {
@@ -79,29 +102,51 @@ window.addEventListener('DOMContentLoaded', DOMContentLoaded => {
         if(!player_grounded) {
             player_y += player_vy; 
         }
+
+        // LOSS CONDITION
+        if(player_y < -30) {
+            player_y = 0; 
+            player_x = 0; 
+        }
     
+        // RENDER INIT
         render.save(); 
-        render.translate(-player_x * w / 2, player_y * h / 2); 
-        
-        render.clearRect(player_x * w / 2, -player_y * h / 2, render.canvas.width, render.canvas.height); 
+        render.translate(-player_x * unit, player_y * unit); 
+        render.clearRect(player_x * unit, -player_y * unit, render.canvas.width, render.canvas.height); 
 
-        render.fillStyle = '#0f0'; 
-        render.fillRect(-1000, render.canvas.height / 2, 10000 * render.canvas.width, render.canvas.height / 2); 
-
-        render.fillStyle = '#0ff'; 
-        render.fillRect(-1000 * w, 0, 10000 * render.canvas.width, render.canvas.height / 2); 
-        
+        // RENDER PLATFORMS
         render.fillStyle = '#00f'; 
         platforms.forEach(platform => {
-            render.fillRect(platform.x * w / 2 + w / 2, -platform.y * h / 2 + h / 2, platform.w * w / 2, platform.h * h / 2); 
+            render.fillRect(platform.x * unit + w / 2, -platform.y * unit + unit, platform.w * unit, platform.h * unit); 
+        }); 
+
+        // RENDER COINS AND DETECT/HANDLE COLLISIONS
+        coins.forEach((coin, i) => {
+            const cx = coin.x + coin.w / 2, cy = coin.y - coin.h / 2; 
+            const px = player_x, py = player_y + player_r; 
+            if(Math.sqrt(Math.pow(px - cx, 2) + Math.pow(py - cy, 2)) * unit < player_r * unit) {
+                coins.splice(i, 1); 
+                points++; 
+                return; 
+            }
+            render.fillStyle = '#ff0'; 
+            render.fillRect(coin.x * unit + w / 2, -coin.y * unit + unit, coin.w * unit, coin.h * unit); 
         }); 
         
+        // DRAW THE PLAYER
         render.fillStyle = '#f00'; 
         render.beginPath(); 
-        render.arc(player_x * w / 2 + w / 2, -player_y * h / 2 + h / 2 - player_r * h / 2, player_r * h / 2, 0, 2 * Math.PI); 
+        render.arc(player_x * unit + w / 2, -player_y * unit + unit - player_r * unit, player_r * unit, 0, 2 * Math.PI); 
         render.fill(); 
-        
+
+        // FINISHED DRAWING SCENE
         render.restore(); 
+        
+        // DRAW POINTS
+        render.fillStyle = '#f0f'; 
+        render.font = 'bold 64px sans-serif'; 
+        render.fillText(`${points} POINTS`, 50, 114); 
+
         window.requestAnimationFrame(animation); 
     }; 
     window.requestAnimationFrame(animation); 
